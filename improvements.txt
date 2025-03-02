@@ -1,0 +1,27 @@
+# Scope for Improvements in Medical RAG Chatbot
+
+## High Priority Improvements
+
+1. **Streaming LLM Responses**
+   - Implement server-sent events (SSE) or WebSockets for streaming responses
+   - Modify the LLM integration to use OpenAI's streaming API
+   - Update the frontend to progressively render tokens as they arrive
+   - Reduce perceived latency by showing partial responses during generation
+
+2. **Enhanced Medical Context**
+   - Incorporate medical knowledge graphs for better entity recognition(Graph-RAG)
+   - Add medical terminology dictionaries for improved query understanding
+
+## Feature Enhancements
+
+1. **UI/UX Improvements**
+   - Add chat history persistence
+   - Implement progressive disclosure of medical information
+   - Add visual elements for medical concepts (diagrams, structures) - Multimodal RAG
+   - Support for voice input and accessibility features
+
+2. **Evaluation Framework**
+   - Implement automated evaluation using medical QA datasets
+   - Add support for human feedback collection
+   - Create benchmarks for retrieval accuracy on medical corpora
+   - Develop metrics specific to medical information quality

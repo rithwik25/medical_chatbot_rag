@@ -1,0 +1,14 @@
+services:
+  medical-rag:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./:/app
+      - medical_rag_data:/app/medical_rag_model
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+
+volumes:
+  medical_rag_data:
