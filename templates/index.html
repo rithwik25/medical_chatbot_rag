@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical RAG Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .chat-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background-color: #0d6efd;
+            color: white;
+            padding: 15px 20px;
+            font-weight: bold;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .message {
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            max-width: 75%;
+        }
+        .user-message {
+            background-color: #e9ecef;
+            margin-left: auto;
+            border-top-right-radius: 0;
+        }
+        .bot-message {
+            background-color: #f1f8ff;
+            border-top-left-radius: 0;
+        }
+        .chat-input {
+            border-top: 1px solid #dee2e6;
+            padding: 15px;
+            background-color: white;
+        }
+        .loader {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #0d6efd;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .reference-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            padding: 10px 15px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+        .follow-up {
+            display: inline-block;
+            background-color: #e7f1ff;
+            border: 1px solid #cfe2ff;
+            border-radius: 20px;
+            padding: 5px 15px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .follow-up:hover {
+            background-color: #d0e3ff;
+        }
+        .disclaimer {
+            font-size: 0.8rem;
+            color: #6c757d;
+            font-style: italic;
+            padding: 10px;
+            border-top: 1px solid #dee2e6;
+        }
+        .section-header {
+            font-weight: bold;
+            margin-top: 15px;
+            color: #0d6efd;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4 mb-4">
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <i class="bi bi-robot me-2"></i> Medical RAG Chatbot
+                    </div>
+                    <div class="col-auto">
+                        <button id="metrics-btn" class="btn btn-sm btn-outline-light">
+                            <i class="bi bi-graph-up me-1"></i> Metrics
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot-message">
+                    <p>Hello! I'm your medical information assistant. Ask me any medical questions, and I'll provide accurate information from trusted sources.</p>
+                </div>
+            </div>
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" id="user-input" class="form-control" placeholder="Type your medical question..." aria-label="User message">
+                    <button class="btn btn-primary" type="button" id="send-btn">
+                        <i class="bi bi-send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Modal -->
+    <div class="modal fade" id="metrics-modal" tabindex="-1" aria-labelledby="metricsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="metricsModalLabel">System Performance Metrics</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="metrics-content">
+                    Loading metrics...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+            const metricsBtn = document.getElementById('metrics-btn');
+            let metricsModal;
+
+            // Initialize the Bootstrap modal
+            metricsBtn.addEventListener('click', function() {
+                fetchMetrics();
+                metricsModal = new bootstrap.Modal(document.getElementById('metrics-modal'));
+                metricsModal.show();
+            });
+
+            // Handle send button click
+            sendBtn.addEventListener('click', sendMessage);
+            
+            // Handle enter key press
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Handle follow-up question clicks
+            chatMessages.addEventListener('click', function(e) {
+                if (e.target.classList.contains('follow-up')) {
+                    userInput.value = e.target.textContent;
+                    sendMessage();
+                }
+            });
+
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (message === '') return;
+
+                // Add user message to chat
+                addMessage(message, 'user');
+                userInput.value = '';
+
+                // Add loading indicator
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'message bot-message d-flex align-items-center';
+                loadingDiv.innerHTML = '<div class="loader me-3"></div><span>Thinking...</span>';
+                chatMessages.appendChild(loadingDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                // Send query to backend
+                fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: message, top_k: 3 }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove loading indicator
+                    chatMessages.removeChild(loadingDiv);
+                    
+                    // Add bot response
+                    if (data.error) {
+                        addMessage(`Error: ${data.error}`, 'bot');
+                    } else {
+                        addFormattedResponse(data);
+                    }
+                })
+                .catch(error => {
+                    // Remove loading indicator
+                    chatMessages.removeChild(loadingDiv);
+                    addMessage(`Error: ${error.message}`, 'bot');
+                });
+            }
+
+            function addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                messageDiv.innerHTML = `<p>${text}</p>`;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            function addFormattedResponse(data) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message bot-message';
+                
+                // Parse the answer section
+                let html = `<p>${data.answer}</p>`;
+                
+                // Add references section
+                if (data.references && data.references.length > 0) {
+                    html += `<div class="section-header">REFERENCES:</div><div class="reference-box">`;
+                    data.references.forEach((ref, index) => {
+                        html += `<p>[${index + 1}] ${ref.url}, Section ${ref.section_index}, Paragraph ${ref.paragraph_index}</p>`;
+                    });
+                    html += `</div>`;
+                }
+                
+                // Add follow-up questions
+                if (data.followup_questions && data.followup_questions.length > 0) {
+                    html += `<div class="section-header">FOLLOW-UP QUESTIONS:</div><div>`;
+                    data.followup_questions.forEach(question => {
+                        html += `<span class="follow-up">${question}</span>`;
+                    });
+                    html += `</div>`;
+                }
+                
+                // Add disclaimer
+                if (data.disclaimer) {
+                    html += `<div class="disclaimer">${data.disclaimer}</div>`;
+                }
+                
+                messageDiv.innerHTML = html;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            function fetchMetrics() {
+                const metricsContent = document.getElementById('metrics-content');
+                metricsContent.innerHTML = 'Loading metrics...';
+                
+                fetch('/api/metrics')
+                    .then(response => response.json())
+                    .then(data => {
+                        let html = '<div class="table-responsive"><table class="table table-striped">';
+                        html += '<tbody>';
+                        html += `<tr><td>Total Queries</td><td>${data.total_queries}</td></tr>`;
+                        html += `<tr><td>Average Retrieval Time</td><td>${(data.avg_retrieval_time || 0).toFixed(3)}s</td></tr>`;
+                        html += `<tr><td>Average Generation Time</td><td>${(data.avg_generation_time || 0).toFixed(3)}s</td></tr>`;
+                        html += `<tr><td>Average Total Time</td><td>${(data.avg_total_time || 0).toFixed(3)}s</td></tr>`;
+                        html += `<tr><td>Cache Hit Rate</td><td>${((data.cache_hit_rate || 0) * 100).toFixed(1)}%</td></tr>`;
+                        html += '</tbody></table></div>';
+                        metricsContent.innerHTML = html;
+                    })
+                    .catch(error => {
+                        metricsContent.innerHTML = `<div class="alert alert-danger">Error loading metrics: ${error.message}</div>`;
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
